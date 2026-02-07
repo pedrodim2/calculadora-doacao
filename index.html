@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calculadora de Doação e Projeções</title>
+  <style>
+    :root { --bg:#0b0b0c; --card:#141418; --txt:#f2f2f2; --mut:#b7b7b7; --bd:#2a2a33; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--txt); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
+    h1 { font-size: 20px; margin: 6px 0 14px; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 12px; }
+    .tabbtn { border:1px solid var(--bd); background:transparent; color:var(--txt); padding:10px 12px; border-radius:10px; cursor:pointer; }
+    .tabbtn.active { background: #1f1f28; }
+    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:14px; }
+    .col-12{grid-column: span 12;}
+    .col-6{grid-column: span 6;}
+    .col-4{grid-column: span 4;}
+    .col-3{grid-column: span 3;}
+    .col-8{grid-column: span 8;}
+    .col-9{grid-column: span 9;}
+    .col-5{grid-column: span 5;}
+    @media (max-width: 820px){
+      .col-6,.col-4,.col-3,.col-8,.col-9,.col-5{grid-column: span 12;}
+    }
+    label{ display:block; font-size: 12px; color: var(--mut); margin: 0 0 6px;}
+    input, select, textarea {
+      width:100%; box-sizing:border-box; padding: 11px 10px; border-radius: 10px;
+      border: 1px solid var(--bd); background: #0f0f14; color: var(--txt);
+      outline:none;
+    }
+    textarea{ min-height: 88px; resize: vertical; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .btn {
+      border:1px solid var(--bd); background:#1f1f28; color:var(--txt);
+      padding:11px 12px; border-radius: 10px; cursor:pointer;
+    }
+    .btn.primary { background: #2a2a44; border-color:#3a3a66; }
+    .btn.green { background:#11331f; border-color:#1e5a35; }
+    .muted { color: var(--mut); font-size: 12px; line-height: 1.4; }
+    .kpi { display:grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    @media (max-width: 820px){ .kpi{grid-template-columns:1fr;} }
+    .k { background:#101018; border:1px solid var(--bd); border-radius: 12px; padding: 12px; }
+    .k .t { font-size: 12px; color: var(--mut); }
+    .k .v { font-size: 18px; margin-top: 6px; }
+    .warn { color:#ffd27a; }
+    .ok { color:#8dffb1; }
+    .hide { display:none; }
+    .hr { height:1px; background:var(--bd); margin: 12px 0; }
+    .foot { margin-top: 14px; font-size: 12px; color: var(--mut); }
+    .small { font-size: 11px; color: var(--mut); }
+    a { color:#b9c7ff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Calculadora de Doação (5% do lucro) + Projeções</h1>
+
+    <div class="tabs">
+      <button class="tabbtn active" data-tab="doacao">Doação</button>
+      <button class="tabbtn" data-tab="projA">Projeção (Dias)</button>
+      <button class="tabbtn" data-tab="projB">Projeção (Meses 22 dias)</button>
+      <button class="tabbtn" data-tab="projC">Projeção (Saque mensal fixo)</button>
+    </div>
+
+    <!-- TAB DOAÇÃO -->
+    <section id="doacao" class="card">
+      <div class="grid">
+        <div class="col-4">
+          <label>Cidade</label>
+          <input id="cidade" placeholder="Ex: Uberaba - MG" />
+        </div>
+        <div class="col-4">
+          <label>Nome</label>
+          <input id="nome" placeholder="Seu nome" />
+        </div>
+        <div class="col-4">
+          <label>ID da conta</label>
+          <input id="idconta" placeholder="Ex: 123456" />
+        </div>
+
+        <div class="col-3">
+          <label>Mês transação</label>
+          <input id="mes" placeholder="Ex: Jan/2026" />
+        </div>
+
+        <div class="col-3">
+          <label>Transação Inicial (USD)</label>
+          <input id="inicial" inputmode="decimal" placeholder="Ex: 100" />
+        </div>
+        <div class="col-2">
+          <label>Depósito (USD)</label>
+          <input id="deposito" inputmode="decimal" placeholder="Ex: 50" />
+        </div>
+        <div class="col-2">
+          <label>Saque (USD)</label>
+          <input id="saque" inputmode="decimal" placeholder="Ex: 20" />
+        </div>
+        <div class="col-2">
+          <label>Saldo final (USD)</label>
+          <input id="final" inputmode="decimal" placeholder="Ex: 160" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="calcDoacao">Calcular</button>
+            <button class="btn" id="limparDoacao">Limpar</button>
+          </div>
+          <div class="foot muted">
+            Regra do lucro (recomendada): <b>(Saldo final + Saques) − (Inicial + Depósitos)</b>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="kpi">
+            <div class="k">
+              <div class="t">Lucro final (USD)</div>
+              <div class="v" id="lucroOut">—</div>
+              <div class="small" id="lucroHint"></div>
+            </div>
+            <div class="k">
+              <div class="t">Doação (5% do lucro) (USD)</div>
+              <div class="v" id="doacaoOut">—</div>
+              <div class="small muted">Valores em USD — lembre-se de fazer a conversão para BRL.</div>
+            </div>
+            <div class="k">
+              <div class="t">Resumo (texto do relatório)</div>
+              <textarea id="relatorio" readonly placeholder="Clique em Calcular..."></textarea>
+              <div class="row">
+                <button class="btn" id="copiarRelatorio">Copiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="hr"></div>
+          <div class="grid">
+            <div class="col-6">
+              <label>Receber relatório no WhatsApp (opcional)</label>
+              <input id="whats" inputmode="tel" placeholder="DDD + número (ex: 34999998888)" />
+              <div class="muted">
+                Isso abre o WhatsApp com a mensagem pronta (você clica em Enviar). Para envio automático 100%, precisa de API oficial.
+              </div>
+            </div>
+            <div class="col-6">
+              <label>&nbsp;</label>
+              <button class="btn green" id="btnWhats" disabled>Abrir WhatsApp com relatório</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB Projeção A -->
+    <section id="projA" class="card hide">
+      <div class="grid">
+        <div class="col-4">
+          <label>Capital inicial (USD)</label>
+          <input id="a_cap" inputmode="decimal" placeholder="Ex: 500" />
+        </div>
+        <div class="col-4">
+          <label>Taxa diária (%)</label>
+          <input id="a_taxa" inputmode="decimal" placeholder="Ex: 1.28" />
+        </div>
+        <div class="col-4">
+          <label>Dias</label>
+          <input id="a_dias" inputmode="numeric" placeholder="Ex: 22" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="calcA">Calcular</button>
+            <button class="btn" id="limparA">Limpar</button>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="kpi">
+            <div class="k">
+              <div class="t">Valor final (USD)</div>
+              <div class="v" id="a_final">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Lucro (USD)</div>
+              <div class="v" id="a_lucro">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Crescimento (%)</div>
+              <div class="v" id="a_pct">—</div>
+            </div>
+          </div>
+          <div class="foot muted">Fórmula: final = capital × (1 + taxa/100)^dias</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB Projeção B -->
+    <section id="projB" class="card hide">
+      <div class="grid">
+        <div class="col-3">
+          <label>Capital inicial (USD)</label>
+          <input id="b_cap" inputmode="decimal" placeholder="Ex: 500" />
+        </div>
+        <div class="col-3">
+          <label>Taxa diária (%)</label>
+          <input id="b_taxa" inputmode="decimal" placeholder="Ex: 1.28" />
+        </div>
+        <div class="col-3">
+          <label>Meses</label>
+          <input id="b_meses" inputmode="numeric" placeholder="Ex: 10" />
+        </div>
+        <div class="col-3">
+          <label>Dias por mês</label>
+          <input id="b_dpm" inputmode="numeric" value="22" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="calcB">Calcular</button>
+            <button class="btn" id="limparB">Limpar</button>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="kpi">
+            <div class="k">
+              <div class="t">Valor final (USD)</div>
+              <div class="v" id="b_final">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Lucro (USD)</div>
+              <div class="v" id="b_lucro">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Dias totais</div>
+              <div class="v" id="b_diasTot">—</div>
+            </div>
+          </div>
+          <div class="foot muted">Fórmula: final = capital × (1 + taxa/100)^(meses×diasPorMês)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB Projeção C -->
+    <section id="projC" class="card hide">
+      <div class="grid">
+        <div class="col-3">
+          <label>Capital inicial (USD)</label>
+          <input id="c_cap" inputmode="decimal" placeholder="Ex: 1100" />
+        </div>
+        <div class="col-3">
+          <label>Taxa diária (%)</label>
+          <input id="c_taxa" inputmode="decimal" placeholder="Ex: 1.18" />
+        </div>
+        <div class="col-3">
+          <label>Meses</label>
+          <input id="c_meses" inputmode="numeric" placeholder="Ex: 10" />
+        </div>
+        <div class="col-3">
+          <label>Saque fixo por mês (USD)</label>
+          <input id="c_saque" inputmode="decimal" placeholder="Ex: 200" />
+        </div>
+
+        <div class="col-3">
+          <label>Dias por mês</label>
+          <input id="c_dpm" inputmode="numeric" value="22" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="calcC">Calcular</button>
+            <button class="btn" id="limparC">Limpar</button>
+          </div>
+          <div class="muted">
+            Simula mês a mês: rende por <b>diasPorMês</b> e depois subtrai o saque fixo. Se o saque for maior que o saldo, trava no zero.
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="kpi">
+            <div class="k">
+              <div class="t">Saldo final (USD)</div>
+              <div class="v" id="c_final">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Total sacado (USD)</div>
+              <div class="v" id="c_totalSacado">—</div>
+            </div>
+            <div class="k">
+              <div class="t">Resumo</div>
+              <textarea id="c_resumo" readonly placeholder="Clique em Calcular..."></textarea>
+              <div class="row">
+                <button class="btn" id="c_copiar">Copiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="foot">
+      <div class="muted">
+        Dica: Adicione um rodapé com <b>disclaimer</b> (“Simulações, não é recomendação de investimento”) e páginas de <b>Política de Privacidade</b> e <b>Termos</b> antes de colocar Ads.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- helpers ----------
+    const $ = (id) => document.getElementById(id);
+
+    function parseMoney(v){
+      if(!v) return NaN;
+      // aceita "1.234,56" ou "1234.56"
+      v = String(v).trim();
+      v = v.replace(/\s/g,'');
+      // se tiver vírgula como decimal, remove pontos de milhar e troca vírgula por ponto
+      if(v.includes(',') && (v.lastIndexOf(',') > v.lastIndexOf('.'))){
+        v = v.replace(/\./g,'').replace(',', '.');
+      } else {
+        // formato com ponto decimal: remove vírgulas de milhar
+        v = v.replace(/,/g,'');
+      }
+      const n = Number(v);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function fmtUSD(n){
+      if(!Number.isFinite(n)) return '—';
+      return n.toLocaleString('en-US', { style:'currency', currency:'USD' });
+    }
+
+    function fmtPct(n){
+      if(!Number.isFinite(n)) return '—';
+      return n.toFixed(2) + '%';
+    }
+
+    function clamp0(n){ return n < 0 ? 0 : n; }
+
+    // ---------- tabs ----------
+    const tabBtns = document.querySelectorAll('.tabbtn');
+    tabBtns.forEach(b => b.addEventListener('click', () => {
+      tabBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const tab = b.dataset.tab;
+      ['doacao','projA','projB','projC'].forEach(id => $(id).classList.add('hide'));
+      $(tab).classList.remove('hide');
+    }));
+
+    // ---------- Doação ----------
+    function buildReport({cidade,nome,idconta,mes,inicial,deposito,saque,final,lucro,doacao}){
+      const obs = "Observação: Valores em USD — lembre-se de fazer a conversão para BRL.";
+      const lines = [
+        "RELATÓRIO - DOAÇÃO (5% DO LUCRO)",
+        `Cidade: ${cidade || '-'}`,
+        `Nome: ${nome || '-'}`,
+        `ID da conta: ${idconta || '-'}`,
+        `Mês transação: ${mes || '-'}`,
+        "",
+        `Transação Inicial (USD): ${inicial.toFixed(2)}`,
+        `Depósito (USD): ${deposito.toFixed(2)}`,
+        `Saque (USD): ${saque.toFixed(2)}`,
+        `Saldo final (USD): ${final.toFixed(2)}`,
+        "",
+        `Lucro final (USD): ${lucro.toFixed(2)}`,
+        `Doação (5%) (USD): ${doacao.toFixed(2)}`,
+        "",
+        obs
+      ];
+      return lines.join("\n");
+    }
+
+    function updateWhatsLink(text){
+      const raw = String($('whats').value || '').replace(/\D/g,''); // só números
+      const btn = $('btnWhats');
+      if(raw.length < 10 || !text){
+        btn.disabled = true;
+        btn.onclick = null;
+        return;
+      }
+      btn.disabled = false;
+      btn.onclick = () => {
+        const encoded = encodeURIComponent(text);
+        // wa.me exige país. Brasil = 55
+        const phone = raw.startsWith('55') ? raw : ('55' + raw);
+        const url = `https://wa.me/${phone}?text=${encoded}`;
+        window.open(url, '_blank');
+      };
+    }
+
+    $('calcDoacao').addEventListener('click', () => {
+      const inicial = parseMoney($('inicial').value);
+      const deposito = parseMoney($('deposito').value);
+      const saque = parseMoney($('saque').value);
+      const final = parseMoney($('final').value);
+
+      if([inicial,deposito,saque,final].some(n => !Number.isFinite(n))){
+        $('lucroOut').textContent = 'Preencha os valores corretamente.';
+        $('doacaoOut').textContent = '—';
+        $('relatorio').value = '';
+        $('lucroHint').textContent = '';
+        updateWhatsLink('');
+        return;
+      }
+
+      const lucro = (final + saque) - (inicial + deposito);
+      const doacao = clamp0(lucro) * 0.05;
+
+      $('lucroOut').textContent = fmtUSD(lucro);
+      $('doacaoOut').textContent = fmtUSD(doacao);
+
+      if(lucro < 0){
+        $('lucroHint').innerHTML = `<span class="warn">Prejuízo no mês → doação exibida como $0.00</span>`;
+      } else {
+        $('lucroHint').innerHTML = `<span class="ok">Lucro positivo</span>`;
+      }
+
+      const report = buildReport({
+        cidade: $('cidade').value,
+        nome: $('nome').value,
+        idconta: $('idconta').value,
+        mes: $('mes').value,
+        inicial, deposito, saque, final,
+        lucro,
+        doacao
+      });
+      $('relatorio').value = report;
+      updateWhatsLink(report);
+    });
+
+    $('limparDoacao').addEventListener('click', () => {
+      ['cidade','nome','idconta','mes','inicial','deposito','saque','final','whats'].forEach(id => $(id).value = '');
+      $('lucroOut').textContent = '—';
+      $('doacaoOut').textContent = '—';
+      $('relatorio').value = '';
+      $('lucroHint').textContent = '';
+      updateWhatsLink('');
+    });
+
+    $('whats').addEventListener('input', () => updateWhatsLink($('relatorio').value));
+
+    $('copiarRelatorio').addEventListener('click', async () => {
+      const text = $('relatorio').value;
+      if(!text) return;
+      try { await navigator.clipboard.writeText(text); alert('Relatório copiado!'); }
+      catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
+    });
+
+    // ---------- Projeção A ----------
+    $('calcA').addEventListener('click', () => {
+      const cap = parseMoney($('a_cap').value);
+      const taxa = parseMoney($('a_taxa').value);
+      const dias = parseInt(($('a_dias').value||'').replace(/\D/g,''), 10);
+
+      if(!Number.isFinite(cap) || !Number.isFinite(taxa) || !Number.isFinite(dias) || dias < 0){
+        $('a_final').textContent = 'Preencha corretamente.';
+        $('a_lucro').textContent = '—';
+        $('a_pct').textContent = '—';
+        return;
+      }
+      const final = cap * Math.pow(1 + taxa/100, dias);
+      const lucro = final - cap;
+      const pct = (lucro / cap) * 100;
+
+      $('a_final').textContent = fmtUSD(final);
+      $('a_lucro').textContent = fmtUSD(lucro);
+      $('a_pct').textContent = fmtPct(pct);
+    });
+
+    $('limparA').addEventListener('click', () => {
+      ['a_cap','a_taxa','a_dias'].forEach(id => $(id).value='');
+      $('a_final').textContent='—'; $('a_lucro').textContent='—'; $('a_pct').textContent='—';
+    });
+
+    // ---------- Projeção B ----------
+    $('calcB').addEventListener('click', () => {
+      const cap = parseMoney($('b_cap').value);
+      const taxa = parseMoney($('b_taxa').value);
+      const meses = parseInt(($('b_meses').value||'').replace(/\D/g,''), 10);
+      const dpm = parseInt(($('b_dpm').value||'').replace(/\D/g,''), 10);
+
+      if(!Number.isFinite(cap) || !Number.isFinite(taxa) || !Number.isFinite(meses) || !Number.isFinite(dpm) || meses < 0 || dpm <= 0){
+        $('b_final').textContent = 'Preencha corretamente.';
+        $('b_lucro').textContent = '—';
+        $('b_diasTot').textContent = '—';
+        return;
+      }
+      const diasTot = meses * dpm;
+      const final = cap * Math.pow(1 + taxa/100, diasTot);
+      const lucro = final - cap;
+
+      $('b_diasTot').textContent = String(diasTot);
+      $('b_final').textContent = fmtUSD(final);
+      $('b_lucro').textContent = fmtUSD(lucro);
+    });
+
+    $('limparB').addEventListener('click', () => {
+      ['b_cap','b_taxa','b_meses'].forEach(id => $(id).value='');
+      $('b_dpm').value = '22';
+      $('b_final').textContent='—'; $('b_lucro').textContent='—'; $('b_diasTot').textContent='—';
+    });
+
+    // ---------- Projeção C ----------
+    function buildCResumo(meses, dpm, taxa, saque, saldoFinal, totalSacado){
+      return [
+        "PROJEÇÃO (SAQUE MENSAL FIXO)",
+        `Meses: ${meses}`,
+        `Dias por mês: ${dpm}`,
+        `Taxa diária: ${taxa.toFixed(4)}%`,
+        `Saque mensal: ${saque.toFixed(2)} USD`,
+        "",
+        `Total sacado: ${totalSacado.toFixed(2)} USD`,
+        `Saldo final: ${saldoFinal.toFixed(2)} USD`
+      ].join("\n");
+    }
+
+    $('calcC').addEventListener('click', () => {
+      let cap = parseMoney($('c_cap').value);
+      const taxa = parseMoney($('c_taxa').value);
+      const meses = parseInt(($('c_meses').value||'').replace(/\D/g,''), 10);
+      const saque = parseMoney($('c_saque').value);
+      const dpm = parseInt(($('c_dpm').value||'').replace(/\D/g,''), 10);
+
+      if(!Number.isFinite(cap) || !Number.isFinite(taxa) || !Number.isFinite(meses) ||
+         !Number.isFinite(saque) || !Number.isFinite(dpm) || meses < 0 || dpm <= 0){
+        $('c_final').textContent = 'Preencha corretamente.';
+        $('c_totalSacado').textContent = '—';
+        $('c_resumo').value = '';
+        return;
+      }
+
+      let totalSacado = 0;
+      for(let m=1; m<=meses; m++){
+        // rende no mês
+        cap = cap * Math.pow(1 + taxa/100, dpm);
+        // saque
+        const s = Math.min(cap, saque);
+        cap = cap - s;
+        totalSacado += s;
+        if(cap <= 0) { cap = 0; break; }
+      }
+
+      $('c_final').textContent = fmtUSD(cap);
+      $('c_totalSacado').textContent = fmtUSD(totalSacado);
+      $('c_resumo').value = buildCResumo(meses, dpm, taxa, saque, cap, totalSacado);
+    });
+
+    $('limparC').addEventListener('click', () => {
+      ['c_cap','c_taxa','c_meses','c_saque'].forEach(id => $(id).value='');
+      $('c_dpm').value = '22';
+      $('c_final').textContent='—'; $('c_totalSacado').textContent='—'; $('c_resumo').value='';
+    });
+
+    $('c_copiar').addEventListener('click', async () => {
+      const text = $('c_resumo').value;
+      if(!text) return;
+      try { await navigator.clipboard.writeText(text); alert('Resumo copiado!'); }
+      catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
+    });
+  </script>
+</body>
+</html>
