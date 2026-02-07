@@ -16,13 +16,12 @@
     .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:14px; }
     .col-12{grid-column: span 12;}
     .col-6{grid-column: span 6;}
+    .col-5{grid-column: span 5;}
     .col-4{grid-column: span 4;}
     .col-3{grid-column: span 3;}
-    .col-8{grid-column: span 8;}
-    .col-9{grid-column: span 9;}
-    .col-5{grid-column: span 5;}
+    .col-2{grid-column: span 2;}
     @media (max-width: 820px){
-      .col-6,.col-4,.col-3,.col-8,.col-9,.col-5{grid-column: span 12;}
+      .col-6,.col-5,.col-4,.col-3,.col-2{grid-column: span 12;}
     }
     label{ display:block; font-size: 12px; color: var(--mut); margin: 0 0 6px;}
     input, select, textarea {
@@ -67,6 +66,27 @@
     <!-- TAB DOAÇÃO -->
     <section id="doacao" class="card">
       <div class="grid">
+
+        <div class="col-12">
+          <div class="grid">
+            <div class="col-5">
+              <label>Cotação USD → BRL (automática, pode ajustar manualmente)</label>
+              <input id="fx" inputmode="decimal" placeholder="Ex: 5,00" />
+              <div class="small" id="fxStatus">Buscando cotação...</div>
+            </div>
+            <div class="col-3">
+              <label>&nbsp;</label>
+              <button class="btn" id="fxRefresh">Atualizar cotação</button>
+            </div>
+            <div class="col-4">
+              <label>&nbsp;</label>
+              <div class="muted">
+                Sua contribuição será destinada a instituições e famílias que realmente precisam. Muito obrigado por fazer parte disso.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="col-4">
           <label>Cidade</label>
           <input id="cidade" placeholder="Ex: Uberaba - MG" />
@@ -115,14 +135,16 @@
         <div class="col-12">
           <div class="kpi">
             <div class="k">
-              <div class="t">Lucro final (USD)</div>
+              <div class="t">Lucro final</div>
               <div class="v" id="lucroOut">—</div>
+              <div class="small" id="lucroOutBRL"></div>
               <div class="small" id="lucroHint"></div>
             </div>
             <div class="k">
-              <div class="t">Doação (5% do lucro) (USD)</div>
+              <div class="t">Doação (5% do lucro)</div>
               <div class="v" id="doacaoOut">—</div>
-              <div class="small muted">Valores em USD — lembre-se de fazer a conversão para BRL.</div>
+              <div class="small" id="doacaoOutBRL"></div>
+              <div class="small muted">Sua contribuição será destinada a instituições e famílias que realmente precisam. Muito obrigado por fazer parte disso.</div>
             </div>
             <div class="k">
               <div class="t">Resumo (texto do relatório)</div>
@@ -301,9 +323,14 @@
       </div>
     </section>
 
+    <!-- Rodapé com links -->
     <div class="foot">
       <div class="muted">
-        Dica: Adicione um rodapé com <b>disclaimer</b> (“Simulações, não é recomendação de investimento”) e páginas de <b>Política de Privacidade</b> e <b>Termos</b> antes de colocar Ads.
+        <b>Disclaimer:</b> Esta página fornece apenas cálculos e simulações matemáticas. Não é recomendação financeira, investimento ou promessa de ganhos.
+        <br><br>
+        <a href="privacidade.html">Política de Privacidade</a> •
+        <a href="termos.html">Termos de Uso</a> •
+        <a href="contato.html">Contato</a>
       </div>
     </div>
   </div>
@@ -314,14 +341,10 @@
 
     function parseMoney(v){
       if(!v) return NaN;
-      // aceita "1.234,56" ou "1234.56"
-      v = String(v).trim();
-      v = v.replace(/\s/g,'');
-      // se tiver vírgula como decimal, remove pontos de milhar e troca vírgula por ponto
+      v = String(v).trim().replace(/\s/g,'');
       if(v.includes(',') && (v.lastIndexOf(',') > v.lastIndexOf('.'))){
         v = v.replace(/\./g,'').replace(',', '.');
       } else {
-        // formato com ponto decimal: remove vírgulas de milhar
         v = v.replace(/,/g,'');
       }
       const n = Number(v);
@@ -331,6 +354,11 @@
     function fmtUSD(n){
       if(!Number.isFinite(n)) return '—';
       return n.toLocaleString('en-US', { style:'currency', currency:'USD' });
+    }
+
+    function fmtBRL(n){
+      if(!Number.isFinite(n)) return '';
+      return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
     }
 
     function fmtPct(n){
@@ -350,9 +378,68 @@
       $(tab).classList.remove('hide');
     }));
 
+    // ---------- FX (USD->BRL) ----------
+    let fxRate = NaN; // 1 USD = fxRate BRL
+    function setFx(rate, sourceText){
+      fxRate = rate;
+      $('fx').value = String(rate.toFixed(4)).replace('.', ',');
+      $('fxStatus').textContent = sourceText;
+      // se já tem relatório calculado, atualiza BRL e whatsapp link
+      if($('relatorio').value){
+        // recalcula para refletir BRL atualizado
+        $('calcDoacao').click();
+      }
+    }
+
+    async function fetchFx(){
+      $('fxStatus').textContent = 'Buscando cotação...';
+      // Fonte 1: Frankfurter (geralmente com CORS ok)
+      try{
+        const r1 = await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL', { cache: 'no-store' });
+        if(r1.ok){
+          const j1 = await r1.json();
+          const rate = j1?.rates?.BRL;
+          if(Number.isFinite(rate)){
+            setFx(rate, 'Cotação automática (Frankfurter) atualizada.');
+            return;
+          }
+        }
+      }catch(e){}
+
+      // Fonte 2 (fallback): ER-API
+      try{
+        const r2 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
+        if(r2.ok){
+          const j2 = await r2.json();
+          const rate = j2?.rates?.BRL;
+          if(Number.isFinite(rate)){
+            setFx(rate, 'Cotação automática (ER-API) atualizada.');
+            return;
+          }
+        }
+      }catch(e){}
+
+      $('fxStatus').innerHTML = '<span class="warn">Não foi possível buscar a cotação automaticamente. Digite manualmente (ex: 5,00).</span>';
+    }
+
+    $('fxRefresh').addEventListener('click', fetchFx);
+
+    $('fx').addEventListener('input', () => {
+      const v = parseMoney($('fx').value);
+      if(Number.isFinite(v) && v > 0){
+        fxRate = v;
+        $('fxStatus').textContent = 'Cotação definida manualmente.';
+        if($('relatorio').value){
+          $('calcDoacao').click();
+        }
+      }
+    });
+
     // ---------- Doação ----------
-    function buildReport({cidade,nome,idconta,mes,inicial,deposito,saque,final,lucro,doacao}){
-      const obs = "Observação: Valores em USD — lembre-se de fazer a conversão para BRL.";
+    function buildReport({cidade,nome,idconta,mes,inicial,deposito,saque,final,lucro,doacao,fx}){
+      const fxTxt = Number.isFinite(fx) ? fx.toFixed(4) : 'N/D';
+      const toBRL = (usd) => (Number.isFinite(fx) ? usd * fx : NaN);
+
       const lines = [
         "RELATÓRIO - DOAÇÃO (5% DO LUCRO)",
         `Cidade: ${cidade || '-'}`,
@@ -360,21 +447,23 @@
         `ID da conta: ${idconta || '-'}`,
         `Mês transação: ${mes || '-'}`,
         "",
-        `Transação Inicial (USD): ${inicial.toFixed(2)}`,
-        `Depósito (USD): ${deposito.toFixed(2)}`,
-        `Saque (USD): ${saque.toFixed(2)}`,
-        `Saldo final (USD): ${final.toFixed(2)}`,
+        `Cotação usada: 1 USD = ${fxTxt} BRL`,
         "",
-        `Lucro final (USD): ${lucro.toFixed(2)}`,
-        `Doação (5%) (USD): ${doacao.toFixed(2)}`,
+        `Transação Inicial: ${inicial.toFixed(2)} USD (${Number.isFinite(toBRL(inicial)) ? toBRL(inicial).toFixed(2) : 'N/D'} BRL)`,
+        `Depósito: ${deposito.toFixed(2)} USD (${Number.isFinite(toBRL(deposito)) ? toBRL(deposito).toFixed(2) : 'N/D'} BRL)`,
+        `Saque: ${saque.toFixed(2)} USD (${Number.isFinite(toBRL(saque)) ? toBRL(saque).toFixed(2) : 'N/D'} BRL)`,
+        `Saldo final: ${final.toFixed(2)} USD (${Number.isFinite(toBRL(final)) ? toBRL(final).toFixed(2) : 'N/D'} BRL)`,
         "",
-        obs
+        `Lucro final: ${lucro.toFixed(2)} USD (${Number.isFinite(toBRL(lucro)) ? toBRL(lucro).toFixed(2) : 'N/D'} BRL)`,
+        `Doação (5%): ${doacao.toFixed(2)} USD (${Number.isFinite(toBRL(doacao)) ? toBRL(doacao).toFixed(2) : 'N/D'} BRL)`,
+        "",
+        "Sua contribuição será destinada a instituições e famílias que realmente precisam. Muito obrigado por fazer parte disso."
       ];
       return lines.join("\n");
     }
 
     function updateWhatsLink(text){
-      const raw = String($('whats').value || '').replace(/\D/g,''); // só números
+      const raw = String($('whats').value || '').replace(/\D/g,'');
       const btn = $('btnWhats');
       if(raw.length < 10 || !text){
         btn.disabled = true;
@@ -384,7 +473,6 @@
       btn.disabled = false;
       btn.onclick = () => {
         const encoded = encodeURIComponent(text);
-        // wa.me exige país. Brasil = 55
         const phone = raw.startsWith('55') ? raw : ('55' + raw);
         const url = `https://wa.me/${phone}?text=${encoded}`;
         window.open(url, '_blank');
@@ -402,6 +490,8 @@
         $('doacaoOut').textContent = '—';
         $('relatorio').value = '';
         $('lucroHint').textContent = '';
+        $('lucroOutBRL').textContent = '';
+        $('doacaoOutBRL').textContent = '';
         updateWhatsLink('');
         return;
       }
@@ -411,6 +501,13 @@
 
       $('lucroOut').textContent = fmtUSD(lucro);
       $('doacaoOut').textContent = fmtUSD(doacao);
+
+      // BRL (se tiver cotação)
+      const fx = Number.isFinite(fxRate) && fxRate > 0 ? fxRate : parseMoney($('fx').value);
+      const hasFx = Number.isFinite(fx) && fx > 0;
+
+      $('lucroOutBRL').textContent = hasFx ? (fmtBRL(lucro * fx)) : 'BRL: informe a cotação acima';
+      $('doacaoOutBRL').textContent = hasFx ? (fmtBRL(doacao * fx)) : 'BRL: informe a cotação acima';
 
       if(lucro < 0){
         $('lucroHint').innerHTML = `<span class="warn">Prejuízo no mês → doação exibida como $0.00</span>`;
@@ -425,7 +522,8 @@
         mes: $('mes').value,
         inicial, deposito, saque, final,
         lucro,
-        doacao
+        doacao,
+        fx: hasFx ? fx : NaN
       });
       $('relatorio').value = report;
       updateWhatsLink(report);
@@ -435,6 +533,8 @@
       ['cidade','nome','idconta','mes','inicial','deposito','saque','final','whats'].forEach(id => $(id).value = '');
       $('lucroOut').textContent = '—';
       $('doacaoOut').textContent = '—';
+      $('lucroOutBRL').textContent = '';
+      $('doacaoOutBRL').textContent = '';
       $('relatorio').value = '';
       $('lucroHint').textContent = '';
       updateWhatsLink('');
@@ -534,9 +634,7 @@
 
       let totalSacado = 0;
       for(let m=1; m<=meses; m++){
-        // rende no mês
         cap = cap * Math.pow(1 + taxa/100, dpm);
-        // saque
         const s = Math.min(cap, saque);
         cap = cap - s;
         totalSacado += s;
@@ -560,6 +658,9 @@
       try { await navigator.clipboard.writeText(text); alert('Resumo copiado!'); }
       catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
     });
+
+    // init
+    fetchFx();
   </script>
 </body>
 </html>
