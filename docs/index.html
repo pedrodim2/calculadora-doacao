@@ -34,8 +34,6 @@
     .btn { border:1px solid var(--bd); background:#1f1f28; color:var(--txt); padding:11px 12px; border-radius: 10px; cursor:pointer; }
     .btn.primary { background: #2a2a44; border-color:#3a3a66; }
     .btn.green { background:#11331f; border-color:#1e5a35; }
-    .btn.blue { background:#13213a; border-color:#1f3a66; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
     .muted { color: var(--mut); font-size: 12px; line-height: 1.4; }
     .kpi { display:grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
     @media (max-width: 820px){ .kpi{grid-template-columns:1fr;} }
@@ -101,7 +99,7 @@
 
         <div class="col-3">
           <label>Mês transação</label>
-          <input id="mes" placeholder="Ex: Jan/2026" />
+          <input id="mes" placeholder="Ex: Março/2026" />
         </div>
 
         <div class="col-3">
@@ -125,7 +123,6 @@
           <div class="row">
             <button class="btn primary" id="calcDoacao">Calcular</button>
             <button class="btn" id="limparDoacao">Limpar</button>
-            <button class="btn blue" id="salvarSheets" disabled>Salvar na Planilha</button>
             <span class="small" id="saveStatus"></span>
           </div>
           <div class="foot muted">
@@ -284,9 +281,9 @@
     // ============================
     // CONFIG DO GOOGLE SHEETS
     // ============================
-    // 1) COLE A URL DO SEU WEB APP AQUI:
+    // COLE A URL DO SEU WEB APP AQUI (termina com /exec):
     const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw-gggyvdz7cI5IUpVlTWWM0KCkcR0vquNFz9WNiWll67vvx0GSkqQDTohSmbe9gm3Z/exec";
-    // 2) COLE O MESMO TOKEN DO SEU Apps Script:
+    // COLE O TOKEN (igual ao Apps Script):
     const SHEETS_TOKEN = "FundacaoImple-Ura";
 
     // ---------- helpers ----------
@@ -320,6 +317,23 @@
     }
 
     function clamp0(n){ return n < 0 ? 0 : n; }
+
+    function setSaveStatus(msg, ok=false, warn=false){
+      const el = $('saveStatus');
+      el.textContent = msg || '';
+      el.className = 'small ' + (ok ? 'ok' : warn ? 'warn' : '');
+    }
+
+    // Preenche mês automaticamente: "Março/2026"
+    function setMesAtual(){
+      const agora = new Date();
+      const mesLongo = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(agora);
+      const mesCapitalizado = mesLongo.charAt(0).toUpperCase() + mesLongo.slice(1);
+      const ano = agora.getFullYear();
+      const valor = `${mesCapitalizado}/${ano}`;
+      const el = $('mes');
+      if (el && !el.value) el.value = valor;
+    }
 
     // ---------- tabs ----------
     const tabBtns = document.querySelectorAll('.tabbtn');
@@ -385,7 +399,7 @@
     });
 
     // ---------- Doação ----------
-    let lastComputed = null; // guarda o último cálculo pra salvar no Sheets
+    let lastComputed = null;
 
     function buildReport({cidade,nome,idconta,mes,inicial,deposito,saque,final,lucro,doacao,fx}){
       const fxTxt = Number.isFinite(fx) ? fx.toFixed(4) : 'N/D';
@@ -430,13 +444,67 @@
       };
     }
 
-    function setSaveStatus(msg, ok=false, warn=false){
-      const el = $('saveStatus');
-      el.textContent = msg || '';
-      el.className = 'small ' + (ok ? 'ok' : warn ? 'warn' : '');
+    // --------- AUTO SAVE (sem botão) ----------
+    let lastSaveKey = null;
+    let savingNow = false;
+
+    function makeSaveKey(obj){
+      return [
+        obj.nome, obj.cidade, obj.mes, obj.idConta,
+        obj.inicial, obj.deposito, obj.saque, obj.saldoFinal,
+        obj.doacaoUsd, obj.fx
+      ].join('|');
+    }
+
+    async function saveToSheetsAuto(){
+      if(!lastComputed) return;
+
+      if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.includes("COLE_AQUI")){
+        setSaveStatus('Configure a URL do WebApp.', false, true);
+        return;
+      }
+      if(!SHEETS_TOKEN){
+        setSaveStatus('Configure o TOKEN.', false, true);
+        return;
+      }
+
+      const key = makeSaveKey(lastComputed);
+      if(lastSaveKey === key) {
+        setSaveStatus('Já registrado ✅', true, false);
+        return;
+      }
+      if(savingNow) return;
+      savingNow = true;
+
+      try{
+        setSaveStatus('Registrando...');
+        const payload = { token: SHEETS_TOKEN, ...lastComputed };
+
+        const resp = await fetch(SHEETS_WEBAPP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json().catch(()=>({}));
+
+        if(resp.ok && data.ok){
+          lastSaveKey = key;
+          setSaveStatus('Registrado na planilha ✅', true, false);
+        } else {
+          setSaveStatus('Falhou: ' + (data.error || 'erro desconhecido'), false, true);
+        }
+      } catch(err){
+        setSaveStatus('Erro: ' + String(err), false, true);
+      } finally {
+        savingNow = false;
+      }
     }
 
     $('calcDoacao').addEventListener('click', () => {
+      // garante mês preenchido (caso usuário tenha apagado)
+      setMesAtual();
+
       const inicial = parseMoney($('inicial').value);
       const deposito = parseMoney($('deposito').value);
       const saque = parseMoney($('saque').value);
@@ -449,7 +517,6 @@
         $('lucroHint').textContent = '';
         $('lucroOutBRL').textContent = '';
         $('doacaoOutBRL').textContent = '';
-        $('salvarSheets').disabled = true;
         lastComputed = null;
         setSaveStatus('');
         updateWhatsLink('');
@@ -465,7 +532,7 @@
       const fx = Number.isFinite(fxRate) && fxRate > 0 ? fxRate : parseMoney($('fx').value);
       const hasFx = Number.isFinite(fx) && fx > 0;
 
-      const doacaoBrl = hasFx ? (doacaoUsd * fx) : NaN;
+      const doacaoBrl = hasFx ? (doacaoUsd * fx) : 0;
 
       $('lucroOutBRL').textContent = hasFx ? fmtBRL(lucro * fx) : 'BRL: informe a cotação acima';
       $('doacaoOutBRL').textContent = hasFx ? fmtBRL(doacaoBrl) : 'BRL: informe a cotação acima';
@@ -486,10 +553,11 @@
         doacao: doacaoUsd,
         fx: hasFx ? fx : NaN
       });
+
       $('relatorio').value = report;
       updateWhatsLink(report);
 
-      // guarda para salvar no sheets apenas os campos pedidos
+      // prepara dados para salvar no Sheets (somente os campos que você pediu)
       lastComputed = {
         nome: $('nome').value,
         cidade: $('cidade').value,
@@ -500,12 +568,12 @@
         saque,
         saldoFinal: final,
         doacaoUsd,
-        doacaoBrl: hasFx ? doacaoBrl : 0,
+        doacaoBrl,
         fx: hasFx ? fx : 0
       };
 
-      $('salvarSheets').disabled = false;
-      setSaveStatus('Pronto para salvar.');
+      // salva automaticamente
+      saveToSheetsAuto();
     });
 
     $('limparDoacao').addEventListener('click', () => {
@@ -516,10 +584,11 @@
       $('doacaoOutBRL').textContent = '';
       $('relatorio').value = '';
       $('lucroHint').textContent = '';
-      $('salvarSheets').disabled = true;
       lastComputed = null;
+      lastSaveKey = null;
       setSaveStatus('');
       updateWhatsLink('');
+      setMesAtual();
     });
 
     $('whats').addEventListener('input', () => updateWhatsLink($('relatorio').value));
@@ -529,48 +598,6 @@
       if(!text) return;
       try { await navigator.clipboard.writeText(text); alert('Relatório copiado!'); }
       catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
-    });
-
-    // ------ SALVAR NO GOOGLE SHEETS ------
-    $('salvarSheets').addEventListener('click', async () => {
-      if(!lastComputed){
-        setSaveStatus('Calcule primeiro.', false, true);
-        return;
-      }
-      if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.includes("COLE_AQUI")){
-        setSaveStatus('Configure a URL do WebApp no código.', false, true);
-        return;
-      }
-      if(!SHEETS_TOKEN || SHEETS_TOKEN.includes("COLE_AQUI")){
-        setSaveStatus('Configure o TOKEN no código.', false, true);
-        return;
-      }
-
-      $('salvarSheets').disabled = true;
-      setSaveStatus('Salvando...');
-
-      try{
-        const payload = { token: SHEETS_TOKEN, ...lastComputed };
-
-        const resp = await fetch(SHEETS_WEBAPP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await resp.json().catch(()=>({}));
-
-        if(resp.ok && data.ok){
-          setSaveStatus('Salvo com sucesso ✅', true, false);
-        } else {
-          setSaveStatus('Falhou ao salvar: ' + (data.error || 'erro desconhecido'), false, true);
-        }
-
-      } catch(err){
-        setSaveStatus('Erro de rede/CORS: ' + String(err), false, true);
-      } finally {
-        $('salvarSheets').disabled = false;
-      }
     });
 
     // ---------- Projeções ----------
@@ -682,6 +709,7 @@
     });
 
     // init
+    setMesAtual();
     fetchFx();
   </script>
 </body>
