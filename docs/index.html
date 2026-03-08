@@ -51,13 +51,14 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Calculadora de Doação (5% do lucro) + Projeções</h1>
+    <h1>Calculadora de Doação (5% do lucro) + Projeções + Reuniões</h1>
 
     <div class="tabs">
       <button class="tabbtn active" data-tab="doacao">Doação</button>
       <button class="tabbtn" data-tab="projA">Projeção (Dias)</button>
       <button class="tabbtn" data-tab="projB">Projeção (Meses 22 dias)</button>
       <button class="tabbtn" data-tab="projC">Projeção (Saque mensal fixo)</button>
+      <button class="tabbtn" data-tab="reuniao">Reunião</button>
     </div>
 
     <!-- TAB DOAÇÃO -->
@@ -85,15 +86,15 @@
         </div>
 
         <div class="col-4">
-          <label>Cidade</label>
+          <label>Cidade *</label>
           <input id="cidade" placeholder="Ex: Uberaba - MG" />
         </div>
         <div class="col-4">
-          <label>Nome</label>
+          <label>Nome *</label>
           <input id="nome" placeholder="Seu nome" />
         </div>
         <div class="col-4">
-          <label>ID da conta</label>
+          <label>ID da conta *</label>
           <input id="idconta" placeholder="Ex: 123456" />
         </div>
 
@@ -161,7 +162,7 @@
               <label>Receber relatório no WhatsApp (opcional)</label>
               <input id="whats" inputmode="tel" placeholder="DDD + número (ex: 34999998888)" />
               <div class="muted">
-                Isso abre o WhatsApp com a mensagem pronta (você clica em Enviar). Para envio automático 100%, precisa de API oficial.
+                Isso abre o WhatsApp com a mensagem pronta.
               </div>
             </div>
             <div class="col-6">
@@ -266,9 +267,83 @@
       </div>
     </section>
 
+    <!-- TAB REUNIÃO -->
+    <section id="reuniao" class="card hide">
+      <div class="grid">
+        <div class="col-12">
+          <h2 style="margin:0 0 10px;font-size:18px;">Formulário de Reunião</h2>
+        </div>
+
+        <div class="col-6">
+          <label>Nome da Equipe *</label>
+          <input id="r_nomeEquipe" placeholder="Ex: Equipe Alpha" />
+        </div>
+
+        <div class="col-3">
+          <label>Data da Reunião *</label>
+          <input id="r_dataReuniao" type="date" />
+        </div>
+
+        <div class="col-3">
+          <label>Hora da Reunião *</label>
+          <input id="r_horaReuniao" type="time" />
+        </div>
+
+        <div class="col-6">
+          <label>Organizadores da Reunião (Nome / UDI) *</label>
+          <textarea id="r_organizadores" placeholder="Ex: João Silva / UDI 123"></textarea>
+        </div>
+
+        <div class="col-6">
+          <label>Local *</label>
+          <input id="r_local" placeholder="Ex: Uberaba - MG" />
+        </div>
+
+        <div class="col-3">
+          <label>Número de Membros *</label>
+          <input id="r_numeroMembros" inputmode="numeric" type="number" min="0" placeholder="Ex: 10" />
+        </div>
+
+        <div class="col-3">
+          <label>Número de Convidados *</label>
+          <input id="r_numeroConvidados" inputmode="numeric" type="number" min="0" placeholder="Ex: 2" />
+        </div>
+
+        <div class="col-6">
+          <label>Endereço Carteira Eletrônica *</label>
+          <textarea id="r_enderecoCarteira" placeholder="Cole aqui o endereço da carteira"></textarea>
+        </div>
+
+        <div class="col-12">
+          <div class="kpi">
+            <div class="k">
+              <div class="t">Total de Participantes</div>
+              <div class="v" id="r_totalParticipantes">0</div>
+            </div>
+            <div class="k">
+              <div class="t">Taxa Estimada da Reunião</div>
+              <div class="v" id="r_taxaEstimada">US$ 0.00</div>
+              <div class="small muted">Regra: (Membros + Convidados) × 6</div>
+            </div>
+            <div class="k">
+              <div class="t">Status</div>
+              <div class="v" id="r_status">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="r_enviar">Salvar e Abrir WhatsApp</button>
+            <button class="btn" id="r_limpar">Limpar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="foot">
       <div class="muted">
-        <b>Disclaimer:</b> Esta página fornece apenas cálculos e simulações matemáticas. Não é recomendação financeira, investimento ou promessa de ganhos.
+        <b>Disclaimer:</b> Esta página fornece apenas cálculos e simulações matemáticas. Não é recomendação financeira.
         <br><br>
         <a href="privacidade.html">Política de Privacidade</a> •
         <a href="termos.html">Termos de Uso</a> •
@@ -278,15 +353,13 @@
   </div>
 
   <script>
-    // ============================
-    // CONFIG DO GOOGLE SHEETS
-    // ============================
-    // COLE A URL DO SEU WEB APP AQUI (termina com /exec):
     const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw-gggyvdz7cI5IUpVlTWWM0KCkcR0vquNFz9WNiWll67vvx0GSkqQDTohSmbe9gm3Z/exec";
-    // COLE O TOKEN (igual ao Apps Script):
     const SHEETS_TOKEN = "FundacaoImple-Ura";
+    const REUNIAO_WHATSAPP_NUMERO = "5534996339810";
 
-    // ---------- helpers ----------
+    const FX_CACHE_KEY = "fx_usdbrl_cache_v1";
+    const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
     const $ = (id) => document.getElementById(id);
 
     function parseMoney(v){
@@ -324,7 +397,6 @@
       el.className = 'small ' + (ok ? 'ok' : warn ? 'warn' : '');
     }
 
-    // Preenche mês automaticamente: "Março/2026"
     function setMesAtual(){
       const agora = new Date();
       const mesLongo = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(agora);
@@ -335,38 +407,56 @@
       if (el && !el.value) el.value = valor;
     }
 
-    // ---------- tabs ----------
     const tabBtns = document.querySelectorAll('.tabbtn');
     tabBtns.forEach(b => b.addEventListener('click', () => {
       tabBtns.forEach(x => x.classList.remove('active'));
       b.classList.add('active');
-      const tab = b.dataset.tab;
-      ['doacao','projA','projB','projC'].forEach(id => $(id).classList.add('hide'));
-      $(tab).classList.remove('hide');
+      ['doacao','projA','projB','projC','reuniao'].forEach(id => $(id).classList.add('hide'));
+      $(b.dataset.tab).classList.remove('hide');
     }));
 
-    // ---------- FX (USD->BRL) ----------
     let fxRate = NaN;
+
+    function cacheFx(rate){
+      try{
+        const payload = { rate, ts: Date.now() };
+        localStorage.setItem(FX_CACHE_KEY, JSON.stringify(payload));
+      }catch(e){}
+    }
+
+    function readFxCache(){
+      try{
+        const raw = localStorage.getItem(FX_CACHE_KEY);
+        if(!raw) return null;
+        const obj = JSON.parse(raw);
+        if(!obj || !Number.isFinite(obj.rate) || !Number.isFinite(obj.ts)) return null;
+        return obj;
+      }catch(e){
+        return null;
+      }
+    }
+
+    function isFxCacheFresh(cacheObj){
+      return cacheObj && (Date.now() - cacheObj.ts) < FX_CACHE_TTL_MS;
+    }
+
     function setFx(rate, sourceText){
       fxRate = rate;
       $('fx').value = String(rate.toFixed(4)).replace('.', ',');
       $('fxStatus').textContent = sourceText;
+      cacheFx(rate);
       if($('relatorio').value){
         $('calcDoacao').click();
       }
     }
 
-    async function fetchFx(){
-      $('fxStatus').textContent = 'Buscando cotação...';
+    async function fetchFxNetwork(){
       try{
         const r1 = await fetch('https://api.frankfurter.app/latest?from=USD&to=BRL', { cache: 'no-store' });
         if(r1.ok){
           const j1 = await r1.json();
           const rate = j1?.rates?.BRL;
-          if(Number.isFinite(rate)){
-            setFx(rate, 'Cotação automática (Frankfurter) atualizada.');
-            return;
-          }
+          if(Number.isFinite(rate)) return { rate, src: 'Frankfurter' };
         }
       }catch(e){}
 
@@ -375,30 +465,50 @@
         if(r2.ok){
           const j2 = await r2.json();
           const rate = j2?.rates?.BRL;
-          if(Number.isFinite(rate)){
-            setFx(rate, 'Cotação automática (ER-API) atualizada.');
-            return;
-          }
+          if(Number.isFinite(rate)) return { rate, src: 'ER-API' };
         }
       }catch(e){}
 
-      $('fxStatus').innerHTML = '<span class="warn">Não foi possível buscar a cotação automaticamente. Digite manualmente (ex: 5,00).</span>';
+      return null;
     }
 
-    $('fxRefresh').addEventListener('click', fetchFx);
+    async function fetchFxAuto(force=false){
+      const cached = readFxCache();
+
+      if(!force && isFxCacheFresh(cached)){
+        setFx(cached.rate, 'Cotação em cache (atualiza a cada 24h).');
+        return;
+      }
+
+      $('fxStatus').textContent = 'Buscando cotação...';
+      const net = await fetchFxNetwork();
+      if(net){
+        setFx(net.rate, `Cotação automática (${net.src}) atualizada.`);
+        return;
+      }
+
+      if(cached && Number.isFinite(cached.rate)){
+        setFx(cached.rate, 'Sem rede: usando última cotação salva.');
+        return;
+      }
+
+      $('fxStatus').innerHTML = '<span class="warn">Não foi possível buscar a cotação automaticamente. Digite manualmente.</span>';
+    }
+
+    $('fxRefresh').addEventListener('click', () => fetchFxAuto(true));
 
     $('fx').addEventListener('input', () => {
       const v = parseMoney($('fx').value);
       if(Number.isFinite(v) && v > 0){
         fxRate = v;
         $('fxStatus').textContent = 'Cotação definida manualmente.';
+        cacheFx(v);
         if($('relatorio').value){
           $('calcDoacao').click();
         }
       }
     });
 
-    // ---------- Doação ----------
     let lastComputed = null;
 
     function buildReport({cidade,nome,idconta,mes,inicial,deposito,saque,final,lucro,doacao,fx}){
@@ -444,7 +554,6 @@
       };
     }
 
-    // --------- AUTO SAVE (sem botão) ----------
     let lastSaveKey = null;
     let savingNow = false;
 
@@ -463,10 +572,6 @@
         setSaveStatus('Configure a URL do WebApp.', false, true);
         return;
       }
-      if(!SHEETS_TOKEN){
-        setSaveStatus('Configure o TOKEN.', false, true);
-        return;
-      }
 
       const key = makeSaveKey(lastComputed);
       if(lastSaveKey === key) {
@@ -478,7 +583,7 @@
 
       try{
         setSaveStatus('Registrando...');
-        const payload = { token: SHEETS_TOKEN, ...lastComputed };
+        const payload = { token: SHEETS_TOKEN, type: 'doacao', ...lastComputed };
 
         const resp = await fetch(SHEETS_WEBAPP_URL, {
           method: 'POST',
@@ -501,9 +606,35 @@
       }
     }
 
+    function resetOutputs(){
+      $('lucroOut').textContent = '—';
+      $('doacaoOut').textContent = '—';
+      $('lucroOutBRL').textContent = '';
+      $('doacaoOutBRL').textContent = '';
+      $('relatorio').value = '';
+      $('lucroHint').textContent = '';
+      lastComputed = null;
+      updateWhatsLink('');
+    }
+
+    function requiredText(el){
+      return String(el.value || '').trim();
+    }
+
     $('calcDoacao').addEventListener('click', () => {
-      // garante mês preenchido (caso usuário tenha apagado)
       setMesAtual();
+
+      const nome = requiredText($('nome'));
+      const cidade = requiredText($('cidade'));
+      const idconta = requiredText($('idconta'));
+
+      if(!nome || !cidade || !idconta){
+        resetOutputs();
+        $('lucroOut').textContent = 'Preencha: Nome, Cidade e ID da conta.';
+        $('lucroHint').innerHTML = `<span class="warn">Campos obrigatórios (*)</span>`;
+        setSaveStatus('', false, false);
+        return;
+      }
 
       const inicial = parseMoney($('inicial').value);
       const deposito = parseMoney($('deposito').value);
@@ -511,15 +642,9 @@
       const final = parseMoney($('final').value);
 
       if([inicial,deposito,saque,final].some(n => !Number.isFinite(n))){
+        resetOutputs();
         $('lucroOut').textContent = 'Preencha os valores corretamente.';
-        $('doacaoOut').textContent = '—';
-        $('relatorio').value = '';
-        $('lucroHint').textContent = '';
-        $('lucroOutBRL').textContent = '';
-        $('doacaoOutBRL').textContent = '';
-        lastComputed = null;
-        setSaveStatus('');
-        updateWhatsLink('');
+        setSaveStatus('', false, false);
         return;
       }
 
@@ -544,9 +669,9 @@
       }
 
       const report = buildReport({
-        cidade: $('cidade').value,
-        nome: $('nome').value,
-        idconta: $('idconta').value,
+        cidade,
+        nome,
+        idconta,
         mes: $('mes').value,
         inicial, deposito, saque, final,
         lucro,
@@ -557,12 +682,11 @@
       $('relatorio').value = report;
       updateWhatsLink(report);
 
-      // prepara dados para salvar no Sheets (somente os campos que você pediu)
       lastComputed = {
-        nome: $('nome').value,
-        cidade: $('cidade').value,
+        nome,
+        cidade,
         mes: $('mes').value,
-        idConta: $('idconta').value,
+        idConta: idconta,
         inicial,
         deposito,
         saque,
@@ -572,22 +696,14 @@
         fx: hasFx ? fx : 0
       };
 
-      // salva automaticamente
       saveToSheetsAuto();
     });
 
     $('limparDoacao').addEventListener('click', () => {
       ['cidade','nome','idconta','mes','inicial','deposito','saque','final','whats'].forEach(id => $(id).value = '');
-      $('lucroOut').textContent = '—';
-      $('doacaoOut').textContent = '—';
-      $('lucroOutBRL').textContent = '';
-      $('doacaoOutBRL').textContent = '';
-      $('relatorio').value = '';
-      $('lucroHint').textContent = '';
-      lastComputed = null;
+      resetOutputs();
       lastSaveKey = null;
       setSaveStatus('');
-      updateWhatsLink('');
       setMesAtual();
     });
 
@@ -597,10 +713,9 @@
       const text = $('relatorio').value;
       if(!text) return;
       try { await navigator.clipboard.writeText(text); alert('Relatório copiado!'); }
-      catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
+      catch { alert('Não consegui copiar automaticamente.'); }
     });
 
-    // ---------- Projeções ----------
     $('calcA').addEventListener('click', () => {
       const cap = parseMoney($('a_cap').value);
       const taxa = parseMoney($('a_taxa').value);
@@ -705,12 +820,107 @@
       const text = $('c_resumo').value;
       if(!text) return;
       try { await navigator.clipboard.writeText(text); alert('Resumo copiado!'); }
-      catch { alert('Não consegui copiar automaticamente. Selecione e copie manualmente.'); }
+      catch { alert('Não consegui copiar automaticamente.'); }
     });
 
-    // init
+    function calcReuniaoPreview(){
+      const membros = Number($('r_numeroMembros').value || 0);
+      const convidados = Number($('r_numeroConvidados').value || 0);
+      const total = membros + convidados;
+      const taxa = total * 6;
+
+      $('r_totalParticipantes').textContent = String(total);
+      $('r_taxaEstimada').textContent = fmtUSD(taxa);
+      return { membros, convidados, total, taxa };
+    }
+
+    $('r_numeroMembros').addEventListener('input', calcReuniaoPreview);
+    $('r_numeroConvidados').addEventListener('input', calcReuniaoPreview);
+
+    $('r_limpar').addEventListener('click', () => {
+      [
+        'r_nomeEquipe','r_dataReuniao','r_horaReuniao','r_organizadores',
+        'r_local','r_numeroMembros','r_numeroConvidados','r_enderecoCarteira'
+      ].forEach(id => $(id).value = '');
+      $('r_totalParticipantes').textContent = '0';
+      $('r_taxaEstimada').textContent = 'US$ 0.00';
+      $('r_status').textContent = '—';
+    });
+
+    $('r_enviar').addEventListener('click', async () => {
+      const nomeEquipe = $('r_nomeEquipe').value.trim();
+      const dataReuniao = $('r_dataReuniao').value;
+      const horaReuniao = $('r_horaReuniao').value;
+      const organizadores = $('r_organizadores').value.trim();
+      const local = $('r_local').value.trim();
+      const enderecoCarteira = $('r_enderecoCarteira').value.trim();
+      const { membros, convidados, total, taxa } = calcReuniaoPreview();
+
+      if(!nomeEquipe || !dataReuniao || !horaReuniao || !organizadores || !local || !enderecoCarteira){
+        $('r_status').textContent = 'Preencha todos os campos obrigatórios.';
+        return;
+      }
+
+      if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.includes("COLE_AQUI")){
+        $('r_status').textContent = 'Configure a URL do Apps Script.';
+        return;
+      }
+
+      try {
+        $('r_status').textContent = 'Salvando...';
+
+        const payload = {
+          token: SHEETS_TOKEN,
+          type: 'reuniao',
+          nomeEquipe,
+          dataReuniao,
+          horaReuniao,
+          organizadores,
+          local,
+          numeroMembros: membros,
+          numeroConvidados: convidados,
+          enderecoCarteira
+        };
+
+        const resp = await fetch(SHEETS_WEBAPP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json().catch(()=>({}));
+
+        if(!(resp.ok && data.ok)){
+          throw new Error(data.error || 'Erro ao salvar.');
+        }
+
+        $('r_status').textContent = 'Salvo com sucesso. Abrindo WhatsApp...';
+
+        const msg =
+`Formulário de Reunião
+
+Nome da Equipe: ${nomeEquipe}
+Data da Reunião: ${dataReuniao}
+Hora da Reunião: ${horaReuniao}
+Organizadores da Reunião (Nome / UDI): ${organizadores}
+Local: ${local}
+Número de Membros: ${membros}
+Número de Convidados: ${convidados}
+Total de Participantes: ${total}
+Taxa Estimada da Reunião: US$ ${taxa.toFixed(2)}
+Endereço Carteira Eletrônica: ${enderecoCarteira}`;
+
+        const url = `https://wa.me/${REUNIAO_WHATSAPP_NUMERO}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+
+      } catch (err) {
+        $('r_status').textContent = 'Erro: ' + String(err);
+      }
+    });
+
     setMesAtual();
-    fetchFx();
+    fetchFxAuto(false);
+    setInterval(() => fetchFxAuto(false), FX_CACHE_TTL_MS);
   </script>
 </body>
 </html>
