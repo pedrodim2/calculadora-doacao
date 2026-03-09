@@ -24,7 +24,7 @@
       .col-6,.col-5,.col-4,.col-3,.col-2{grid-column: span 12;}
     }
     label{ display:block; font-size: 12px; color: var(--mut); margin: 0 0 6px;}
-    input, textarea {
+    input, textarea, select {
       width:100%; box-sizing:border-box; padding: 11px 10px; border-radius: 10px;
       border: 1px solid var(--bd); background: #0f0f14; color: var(--txt);
       outline:none;
@@ -60,12 +60,11 @@
       <button class="tabbtn" data-tab="projB">Projeção (Meses 22 dias)</button>
       <button class="tabbtn" data-tab="projC">Projeção (Saque mensal fixo)</button>
       <button class="tabbtn" data-tab="reuniao">Reunião</button>
+      <button class="tabbtn" data-tab="cadastro">Cadastro Novo Membro</button>
     </div>
 
-    <!-- TAB DOAÇÃO -->
     <section id="doacao" class="card">
       <div class="grid">
-
         <div class="col-12">
           <div class="grid">
             <div class="col-5">
@@ -175,7 +174,6 @@
       </div>
     </section>
 
-    <!-- TAB Projeção A -->
     <section id="projA" class="card hide">
       <div class="grid">
         <div class="col-4">
@@ -209,7 +207,6 @@
       </div>
     </section>
 
-    <!-- TAB Projeção B -->
     <section id="projB" class="card hide">
       <div class="grid">
         <div class="col-3"><label>Capital inicial (USD)</label><input id="b_cap" inputmode="decimal" placeholder="Ex: 500" /></div>
@@ -235,7 +232,6 @@
       </div>
     </section>
 
-    <!-- TAB Projeção C -->
     <section id="projC" class="card hide">
       <div class="grid">
         <div class="col-3"><label>Capital inicial (USD)</label><input id="c_cap" inputmode="decimal" placeholder="Ex: 1100" /></div>
@@ -268,7 +264,6 @@
       </div>
     </section>
 
-    <!-- TAB REUNIÃO -->
     <section id="reuniao" class="card hide">
       <div class="grid">
         <div class="col-12">
@@ -316,6 +311,11 @@
         </div>
 
         <div class="col-12">
+          <label>Assuntos da Reunião *</label>
+          <textarea id="r_assuntosReuniao" placeholder="Ex: prestação de contas, metas do mês, próximos eventos"></textarea>
+        </div>
+
+        <div class="col-12">
           <div class="kpi">
             <div class="k">
               <div class="t">Total de Participantes</div>
@@ -335,8 +335,77 @@
 
         <div class="col-12">
           <div class="row">
-            <button class="btn primary" id="r_enviar">Salvar e Abrir WhatsApp</button>
+            <button class="btn primary" id="r_enviar">Salvar na Planilha</button>
             <button class="btn" id="r_limpar">Limpar</button>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label>Texto pronto para copiar e colar no grupo</label>
+          <textarea id="r_resumo" readonly placeholder="Depois de salvar, o resumo aparecerá aqui."></textarea>
+          <div class="row">
+            <button class="btn green" id="r_copiarResumo">Copiar resumo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cadastro" class="card hide">
+      <div class="grid">
+        <div class="col-12">
+          <h2 style="margin:0 0 10px;font-size:18px;">Cadastro Novo Membro</h2>
+        </div>
+
+        <div class="col-4">
+          <label>UID *</label>
+          <input id="c_uid" placeholder="Ex: 6732044" />
+        </div>
+
+        <div class="col-4">
+          <label>Nome *</label>
+          <input id="c_nome" placeholder="Nome completo" />
+        </div>
+
+        <div class="col-4">
+          <label>Cidade *</label>
+          <input id="c_cidade" placeholder="Ex: Uberaba" />
+        </div>
+
+        <div class="col-4">
+          <label>Equipe *</label>
+          <select id="c_equipe">
+            <option value="">Selecione a equipe</option>
+            <option value="Fundação 1">Fundação 1</option>
+            <option value="Fundação 2">Fundação 2</option>
+            <option value="Fundação 3">Fundação 3</option>
+            <option value="Fundação 4">Fundação 4</option>
+            <option value="Fundação 2-1">Fundação 2-1</option>
+            <option value="Fundação 2-2">Fundação 2-2</option>
+          </select>
+        </div>
+
+        <div class="col-4">
+          <label>Data *</label>
+          <input id="c_data" readonly />
+        </div>
+
+        <div class="col-4">
+          <label>Status</label>
+          <input id="c_status" readonly placeholder="—" />
+        </div>
+
+        <div class="col-12">
+          <div class="row">
+            <button class="btn primary" id="c_salvar">Salvar Cadastro</button>
+            <button class="btn" id="c_limpar">Limpar</button>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label>Resumo para copiar e colar no grupo</label>
+          <textarea id="c_resumo" readonly placeholder="Depois de salvar, o resumo aparecerá aqui."></textarea>
+          <div class="row">
+            <button class="btn green" id="c_copiarResumo">Copiar resumo</button>
           </div>
         </div>
       </div>
@@ -356,7 +425,6 @@
   <script>
     const SHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw-gggyvdz7cI5IUpVlTWWM0KCkcR0vquNFz9WNiWll67vvx0GSkqQDTohSmbe9gm3Z/exec";
     const SHEETS_TOKEN = "FundacaoImple-Ura";
-    const REUNIAO_WHATSAPP_NUMERO = "5534996339810";
 
     const FX_CACHE_KEY = "fx_usdbrl_cache_v1";
     const FX_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -412,7 +480,7 @@
     tabBtns.forEach(b => b.addEventListener('click', () => {
       tabBtns.forEach(x => x.classList.remove('active'));
       b.classList.add('active');
-      ['doacao','projA','projB','projC','reuniao'].forEach(id => $(id).classList.add('hide'));
+      ['doacao','projA','projB','projC','reuniao','cadastro'].forEach(id => $(id).classList.add('hide'));
       $(b.dataset.tab).classList.remove('hide');
     }));
 
@@ -835,21 +903,51 @@
       return { membros, convidados, total, taxa };
     }
 
+    function buildResumoReuniao({ nomeEquipe, dataReuniao, horaReuniao, organizadores, local, membros, convidados, total, taxa, enderecoCarteira, assuntosReuniao }){
+      return [
+        "FORMULÁRIO DE REUNIÃO",
+        `Nome da Equipe: ${nomeEquipe}`,
+        `Data da Reunião: ${dataReuniao}`,
+        `Hora da Reunião: ${horaReuniao}`,
+        `Organizadores da Reunião: ${organizadores}`,
+        `Local: ${local}`,
+        `Número de Membros: ${membros}`,
+        `Número de Convidados: ${convidados}`,
+        `Total de Participantes: ${total}`,
+        `Taxa Estimada da Reunião: US$ ${taxa.toFixed(2)}`,
+        `Endereço Carteira Eletrônica: ${enderecoCarteira}`,
+        `Assuntos da Reunião: ${assuntosReuniao}`
+      ].join('\n');
+    }
+
     $('r_numeroMembros').addEventListener('input', calcReuniaoPreview);
     $('r_numeroConvidados').addEventListener('input', calcReuniaoPreview);
 
     $('r_limpar').addEventListener('click', () => {
       [
         'r_nomeEquipe','r_dataReuniao','r_horaReuniao','r_organizadores',
-        'r_local','r_numeroMembros','r_numeroConvidados','r_enderecoCarteira'
+        'r_local','r_numeroMembros','r_numeroConvidados','r_enderecoCarteira',
+        'r_assuntosReuniao'
       ].forEach(id => $(id).value = '');
       $('r_totalParticipantes').textContent = '0';
       $('r_taxaEstimada').textContent = 'US$ 0.00';
       $('r_status').textContent = '—';
+      $('r_resumo').value = '';
       const botao = $('r_enviar');
       botao.disabled = false;
-      botao.textContent = 'Salvar e Abrir WhatsApp';
+      botao.textContent = 'Salvar na Planilha';
       enviandoReuniao = false;
+    });
+
+    $('r_copiarResumo').addEventListener('click', async () => {
+      const text = $('r_resumo').value;
+      if(!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        $('r_status').textContent = 'Resumo copiado ✔';
+      } catch {
+        $('r_status').textContent = 'Não consegui copiar automaticamente.';
+      }
     });
 
     let enviandoReuniao = false;
@@ -860,7 +958,7 @@
       const botao = $('r_enviar');
       enviandoReuniao = true;
       botao.disabled = true;
-      botao.textContent = 'Enviando...';
+      botao.textContent = 'Salvando...';
 
       const nomeEquipe = $('r_nomeEquipe').value.trim();
       const dataReuniao = $('r_dataReuniao').value;
@@ -868,12 +966,17 @@
       const organizadores = $('r_organizadores').value.trim();
       const local = $('r_local').value.trim();
       const enderecoCarteira = $('r_enderecoCarteira').value.trim();
+      const assuntosReuniao = $('r_assuntosReuniao').value.trim();
       const { membros, convidados, total, taxa } = calcReuniaoPreview();
 
-      if(!nomeEquipe || !dataReuniao || !horaReuniao || !organizadores || !local || !enderecoCarteira){
+      if(
+        !nomeEquipe || !dataReuniao || !horaReuniao || !organizadores ||
+        !local || !enderecoCarteira || !assuntosReuniao ||
+        $('r_numeroMembros').value === '' || $('r_numeroConvidados').value === ''
+      ){
         $('r_status').textContent = 'Preencha todos os campos obrigatórios.';
         botao.disabled = false;
-        botao.textContent = 'Salvar e Abrir WhatsApp';
+        botao.textContent = 'Salvar na Planilha';
         enviandoReuniao = false;
         return;
       }
@@ -881,7 +984,7 @@
       if(!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.includes("COLE_AQUI") || SHEETS_WEBAPP_URL.includes("SUA_URL_AQUI")){
         $('r_status').textContent = 'Configure a URL do Apps Script.';
         botao.disabled = false;
-        botao.textContent = 'Salvar e Abrir WhatsApp';
+        botao.textContent = 'Salvar na Planilha';
         enviandoReuniao = false;
         return;
       }
@@ -899,7 +1002,8 @@
           local,
           numeroMembros: membros,
           numeroConvidados: convidados,
-          enderecoCarteira
+          enderecoCarteira,
+          assuntosReuniao
         };
 
         const resp = await fetch(SHEETS_WEBAPP_URL, {
@@ -914,35 +1018,159 @@
           throw new Error(data.error || 'Erro ao salvar.');
         }
 
-        $('r_status').textContent = 'Reunião registrada com sucesso ✔';
+        const resumo = buildResumoReuniao({
+          nomeEquipe,
+          dataReuniao,
+          horaReuniao,
+          organizadores,
+          local,
+          membros,
+          convidados,
+          total,
+          taxa,
+          enderecoCarteira,
+          assuntosReuniao
+        });
 
-        const msg =
-`Formulário de Reunião
-
-Nome da Equipe: ${nomeEquipe}
-Data da Reunião: ${dataReuniao}
-Hora da Reunião: ${horaReuniao}
-Organizadores da Reunião (Nome / UDI): ${organizadores}
-Local: ${local}
-Número de Membros: ${membros}
-Número de Convidados: ${convidados}
-Total de Participantes: ${total}
-Taxa Estimada da Reunião: US$ ${taxa.toFixed(2)}
-Endereço Carteira Eletrônica: ${enderecoCarteira}`;
-
-        const url = `https://wa.me/${REUNIAO_WHATSAPP_NUMERO}?text=${encodeURIComponent(msg)}`;
-        window.open(url, '_blank');
-
-        botao.textContent = 'Enviado ✔';
+        $('r_resumo').value = resumo;
+        $('r_status').textContent = 'Reunião salva com sucesso ✔';
+        botao.textContent = 'Salvo ✔';
 
       } catch (err) {
         $('r_status').textContent = 'Erro: ' + String(err);
         botao.disabled = false;
-        botao.textContent = 'Salvar e Abrir WhatsApp';
+        botao.textContent = 'Salvar na Planilha';
         enviandoReuniao = false;
       }
     });
 
+    function dataHojeBrasil() {
+      const agora = new Date();
+      const dia = String(agora.getDate()).padStart(2, '0');
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const ano = agora.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function atualizarDataCadastro() {
+      $('c_data').value = dataHojeBrasil();
+    }
+
+    function buildResumoCadastro({ uid, nome, cidade, equipe, data }) {
+      return [
+        "CADASTRO NOVO MEMBRO",
+        `UID: ${uid}`,
+        `Nome: ${nome}`,
+        `Cidade: ${cidade}`,
+        `Equipe: ${equipe}`,
+        `Data: ${data}`
+      ].join('\n');
+    }
+
+    let enviandoCadastro = false;
+
+    $('c_salvar').addEventListener('click', async () => {
+      if (enviandoCadastro) return;
+
+      const botao = $('c_salvar');
+      enviandoCadastro = true;
+      botao.disabled = true;
+      botao.textContent = 'Salvando...';
+
+      const uid = $('c_uid').value.trim();
+      const nome = $('c_nome').value.trim();
+      const cidade = $('c_cidade').value.trim();
+      const equipe = $('c_equipe').value.trim();
+      const data = $('c_data').value.trim();
+
+      if (!uid || !nome || !cidade || !equipe || !data) {
+        $('c_status').value = 'Preencha todos os campos obrigatórios.';
+        botao.disabled = false;
+        botao.textContent = 'Salvar Cadastro';
+        enviandoCadastro = false;
+        return;
+      }
+
+      if (!SHEETS_WEBAPP_URL || SHEETS_WEBAPP_URL.includes("COLE_AQUI") || SHEETS_WEBAPP_URL.includes("SUA_URL_AQUI")) {
+        $('c_status').value = 'Configure a URL do Apps Script.';
+        botao.disabled = false;
+        botao.textContent = 'Salvar Cadastro';
+        enviandoCadastro = false;
+        return;
+      }
+
+      try {
+        $('c_status').value = 'Salvando...';
+
+        const payload = {
+          token: SHEETS_TOKEN,
+          type: 'cadastro',
+          uid,
+          nome,
+          cidade,
+          equipe
+        };
+
+        const resp = await fetch(SHEETS_WEBAPP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json().catch(() => ({}));
+
+        if (!(resp.ok && result.ok)) {
+          throw new Error(result.error || 'Erro ao salvar cadastro.');
+        }
+
+        const resumo = buildResumoCadastro({
+          uid,
+          nome,
+          cidade,
+          equipe,
+          data: result.dataCadastro || data
+        });
+
+        $('c_resumo').value = resumo;
+        $('c_status').value = 'Cadastro salvo com sucesso ✔';
+        botao.textContent = 'Salvo ✔';
+
+      } catch (err) {
+        $('c_status').value = String(err).replace('Error: ', '');
+        botao.disabled = false;
+        botao.textContent = 'Salvar Cadastro';
+        enviandoCadastro = false;
+      }
+    });
+
+    $('c_limpar').addEventListener('click', () => {
+      $('c_uid').value = '';
+      $('c_nome').value = '';
+      $('c_cidade').value = '';
+      $('c_equipe').value = '';
+      $('c_status').value = '';
+      $('c_resumo').value = '';
+      atualizarDataCadastro();
+
+      const botao = $('c_salvar');
+      botao.disabled = false;
+      botao.textContent = 'Salvar Cadastro';
+      enviandoCadastro = false;
+    });
+
+    $('c_copiarResumo').addEventListener('click', async () => {
+      const texto = $('c_resumo').value;
+      if (!texto) return;
+
+      try {
+        await navigator.clipboard.writeText(texto);
+        $('c_status').value = 'Resumo copiado ✔';
+      } catch {
+        $('c_status').value = 'Não consegui copiar automaticamente.';
+      }
+    });
+
+    atualizarDataCadastro();
     setMesAtual();
     fetchFxAuto(false);
     setInterval(() => fetchFxAuto(false), FX_CACHE_TTL_MS);
