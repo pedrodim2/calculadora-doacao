@@ -394,6 +394,16 @@
           <input id="c_status" readonly placeholder="—" />
         </div>
 
+        <div class="col-6">
+          <label>Indicado por - Nome *</label>
+          <input id="c_indicadoNome" placeholder="Nome de quem indicou" />
+        </div>
+
+        <div class="col-6">
+          <label>Indicado por - ID *</label>
+          <input id="c_indicadoId" placeholder="ID de quem indicou" />
+        </div>
+
         <div class="col-12">
           <div class="row">
             <button class="btn primary" id="c_salvar">Salvar Cadastro</button>
@@ -1056,14 +1066,16 @@
       $('c_data').value = dataHojeBrasil();
     }
 
-    function buildResumoCadastro({ uid, nome, cidade, equipe, data }) {
+    function buildResumoCadastro({ uid, nome, cidade, equipe, data, indicadoNome, indicadoId }) {
       return [
         "CADASTRO NOVO MEMBRO",
         `UID: ${uid}`,
         `Nome: ${nome}`,
         `Cidade: ${cidade}`,
         `Equipe: ${equipe}`,
-        `Data: ${data}`
+        `Data: ${data}`,
+        `Indicado por - Nome: ${indicadoNome}`,
+        `Indicado por - ID: ${indicadoId}`
       ].join('\n');
     }
 
@@ -1082,8 +1094,10 @@
       const cidade = $('c_cidade').value.trim();
       const equipe = $('c_equipe').value.trim();
       const data = $('c_data').value.trim();
+      const indicadoNome = $('c_indicadoNome').value.trim();
+      const indicadoId = $('c_indicadoId').value.trim();
 
-      if (!uid || !nome || !cidade || !equipe || !data) {
+      if (!uid || !nome || !cidade || !equipe || !data || !indicadoNome || !indicadoId) {
         $('c_status').value = 'Preencha todos os campos obrigatórios.';
         botao.disabled = false;
         botao.textContent = 'Salvar Cadastro';
@@ -1108,7 +1122,9 @@
           uid,
           nome,
           cidade,
-          equipe
+          equipe,
+          indicadoNome,
+          indicadoId
         };
 
         const resp = await fetch(SHEETS_WEBAPP_URL, {
@@ -1128,7 +1144,9 @@
           nome,
           cidade,
           equipe,
-          data: result.dataCadastro || data
+          data: result.dataCadastro || data,
+          indicadoNome,
+          indicadoId
         });
 
         $('c_resumo').value = resumo;
@@ -1148,6 +1166,8 @@
       $('c_nome').value = '';
       $('c_cidade').value = '';
       $('c_equipe').value = '';
+      $('c_indicadoNome').value = '';
+      $('c_indicadoId').value = '';
       $('c_status').value = '';
       $('c_resumo').value = '';
       atualizarDataCadastro();
